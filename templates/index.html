@@ -242,11 +242,6 @@
                     <input id="newLinkUrl" type="text" placeholder="https://..." 
                         class="search-input w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-500">
                 </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">Password</label>
-                    <input id="linkPassword" type="password" placeholder="Admin password" 
-                        class="search-input w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-500">
-                </div>
             </div>
             <div class="flex gap-3 mt-6">
                 <button onclick="closeAddLinkModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 transition">Cancel</button>
@@ -276,11 +271,6 @@
                         <option value="orange">Orange</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-sm text-gray-400 mb-1">Password</label>
-                    <input id="sectionPassword" type="password" placeholder="Admin password" 
-                        class="search-input w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-500">
-                </div>
             </div>
             <div class="flex gap-3 mt-6">
                 <button onclick="closeAddSectionModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 transition">Cancel</button>
@@ -296,11 +286,6 @@
             <p class="text-gray-400 mb-4">Are you sure you want to delete this link?</p>
             <input type="hidden" id="deleteSectionId">
             <input type="hidden" id="deleteLinkId">
-            <div>
-                <label class="block text-sm text-gray-400 mb-1">Password</label>
-                <input id="deletePassword" type="password" placeholder="Admin password" 
-                    class="search-input w-full px-4 py-2.5 rounded-xl text-white placeholder-gray-500">
-            </div>
             <div class="flex gap-3 mt-6">
                 <button onclick="closeDeleteModal()" class="flex-1 px-4 py-2.5 rounded-xl bg-gray-700 hover:bg-gray-600 transition">Cancel</button>
                 <button onclick="confirmDelete()" class="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 transition font-medium">Delete</button>
@@ -314,6 +299,35 @@
     </div>
 
     <script>
+        // Password session management (5 min expiry)
+        const SESSION_DURATION = 5 * 60 * 1000; // 5 minutes in ms
+        
+        function getStoredPassword() {
+            const data = sessionStorage.getItem("adminAuth");
+            if (!data) return null;
+            const { password, timestamp } = JSON.parse(data);
+            if (Date.now() - timestamp > SESSION_DURATION) {
+                sessionStorage.removeItem("adminAuth");
+                return null;
+            }
+            return password;
+        }
+        
+        function storePassword(password) {
+            sessionStorage.setItem("adminAuth", JSON.stringify({
+                password,
+                timestamp: Date.now()
+            }));
+        }
+        
+        async function getPassword() {
+            let password = getStoredPassword();
+            if (password) return password;
+            password = prompt("Enter admin password:");
+            if (password) storePassword(password);
+            return password;
+        }
+
         // Search functions
         function searchNaver() {
             const query = document.getElementById("naverSearch").value;
@@ -364,12 +378,14 @@
             const sectionId = document.getElementById("modalSectionId").value;
             const name = document.getElementById("newLinkName").value.trim();
             const url = document.getElementById("newLinkUrl").value.trim();
-            const password = document.getElementById("linkPassword").value;
 
             if (!name || !url) {
                 showToast("Please enter both name and URL", true);
                 return;
             }
+
+            const password = await getPassword();
+            if (!password) return;
 
             try {
                 const response = await fetch("/api/links", {
@@ -382,21 +398,11 @@
                 });
 
                 if (response.ok) {
+                    storePassword(password); // Refresh session on success
                     const data = await response.json();
-                    // Add new link to DOM
-                    const linksList = document.getElementById(`links-${sectionId}`);
-                    const li = document.createElement("li");
-                    li.className = "link-item flex items-center justify-between group";
-                    li.dataset.linkId = data.link.id;
-                    li.innerHTML = `
-                        <a href="${url}" class="section-link hover:underline flex-1">${name}</a>
-                        <button onclick="deleteLink('${sectionId}', '${data.link.id}')" 
-                            class="delete-btn text-red-400 hover:text-red-300 ml-2 text-sm">✕</button>
-                    `;
-                    linksList.appendChild(li);
-                    closeAddLinkModal();
-                    showToast("Link added successfully");
+                    window.location.reload();
                 } else {
+                    sessionStorage.removeItem("adminAuth"); // Clear on failure
                     const error = await response.json();
                     showToast(error.detail || "Failed to add link", true);
                 }
@@ -423,12 +429,14 @@
         async function addSection() {
             const title = document.getElementById("newSectionName").value.trim();
             const color = document.getElementById("newSectionColor").value;
-            const password = document.getElementById("sectionPassword").value;
 
             if (!title) {
                 showToast("Please enter a section name", true);
                 return;
             }
+
+            const password = await getPassword();
+            if (!password) return;
 
             try {
                 const response = await fetch("/api/sections", {
@@ -441,9 +449,10 @@
                 });
 
                 if (response.ok) {
-                    // Refresh page to show new section
+                    storePassword(password);
                     window.location.reload();
                 } else {
+                    sessionStorage.removeItem("adminAuth");
                     const error = await response.json();
                     showToast(error.detail || "Failed to add section", true);
                 }
@@ -471,7 +480,9 @@
         async function confirmDelete() {
             const sectionId = document.getElementById("deleteSectionId").value;
             const linkId = document.getElementById("deleteLinkId").value;
-            const password = document.getElementById("deletePassword").value;
+            
+            const password = await getPassword();
+            if (!password) return;
 
             try {
                 const response = await fetch(`/api/links/${sectionId}/${linkId}`, {
@@ -480,12 +491,13 @@
                 });
 
                 if (response.ok) {
-                    // Remove link from DOM
+                    storePassword(password);
                     const linkItem = document.querySelector(`[data-link-id="${linkId}"]`);
                     if (linkItem) linkItem.remove();
                     closeDeleteModal();
                     showToast("Link deleted successfully");
                 } else {
+                    sessionStorage.removeItem("adminAuth");
                     const error = await response.json();
                     showToast(error.detail || "Failed to delete", true);
                 }
@@ -516,7 +528,7 @@
 
         // Move link
         async function moveLink(sectionId, linkId, direction) {
-            const password = prompt("Enter admin password:");
+            const password = await getPassword();
             if (!password) return;
 
             try {
@@ -530,8 +542,10 @@
                 });
 
                 if (response.ok) {
+                    storePassword(password);
                     window.location.reload();
                 } else {
+                    sessionStorage.removeItem("adminAuth");
                     const error = await response.json();
                     showToast(error.detail || "Failed to move", true);
                 }
