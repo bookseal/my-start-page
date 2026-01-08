@@ -1,6 +1,6 @@
 """
-My Start Page - FastAPI 백엔드
-링크 관리를 위한 CRUD API 제공
+My Start Page - FastAPI Backend
+CRUD API for link management
 """
 import json
 import os
@@ -17,26 +17,26 @@ from pydantic import BaseModel
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# 설정
+# Configuration
 LINKS_FILE = Path("links.json")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1234")  # 기본값, 운영시 환경변수로 변경
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "1234")
 
 
 class LinkCreate(BaseModel):
-    """링크 생성 요청 모델"""
+    """Link creation request model"""
     section_id: str
     name: str
     url: str
 
 
 class LinkDelete(BaseModel):
-    """링크 삭제 요청 모델"""
+    """Link deletion request model"""
     section_id: str
     link_id: str
 
 
 def load_links() -> dict:
-    """links.json 파일에서 링크 데이터 로드"""
+    """Load link data from links.json file"""
     if not LINKS_FILE.exists():
         return {"sections": []}
     with open(LINKS_FILE, "r", encoding="utf-8") as f:
@@ -44,19 +44,19 @@ def load_links() -> dict:
 
 
 def save_links(data: dict) -> None:
-    """링크 데이터를 links.json 파일에 저장"""
+    """Save link data to links.json file"""
     with open(LINKS_FILE, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
 def verify_password(password: Optional[str]) -> bool:
-    """비밀번호 검증"""
+    """Verify admin password"""
     return password == ADMIN_PASSWORD
 
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    """메인 페이지 렌더링"""
+    """Render main page"""
     data = load_links()
     return templates.TemplateResponse("index.html", {
         "request": request,
@@ -67,19 +67,19 @@ async def read_root(request: Request):
 
 @app.get("/api/links")
 async def get_links():
-    """전체 링크 데이터 조회"""
+    """Get all link data"""
     return load_links()
 
 
 @app.post("/api/links")
 async def add_link(link: LinkCreate, x_password: Optional[str] = Header(None)):
-    """새 링크 추가 (비밀번호 필요)"""
+    """Add new link (password required)"""
     if not verify_password(x_password):
-        raise HTTPException(status_code=401, detail="비밀번호가 올바르지 않습니다")
+        raise HTTPException(status_code=401, detail="Invalid password")
     
     data = load_links()
     
-    # 해당 섹션 찾기
+    # Find the section
     section_found = False
     for section in data["sections"]:
         if section["id"] == link.section_id:
@@ -93,7 +93,7 @@ async def add_link(link: LinkCreate, x_password: Optional[str] = Header(None)):
             break
     
     if not section_found:
-        raise HTTPException(status_code=404, detail="섹션을 찾을 수 없습니다")
+        raise HTTPException(status_code=404, detail="Section not found")
     
     save_links(data)
     return {"success": True, "link": new_link}
@@ -105,13 +105,13 @@ async def delete_link(
     link_id: str, 
     x_password: Optional[str] = Header(None)
 ):
-    """링크 삭제 (비밀번호 필요)"""
+    """Delete link (password required)"""
     if not verify_password(x_password):
-        raise HTTPException(status_code=401, detail="비밀번호가 올바르지 않습니다")
+        raise HTTPException(status_code=401, detail="Invalid password")
     
     data = load_links()
     
-    # 해당 섹션에서 링크 찾아서 삭제
+    # Find and delete link from section
     for section in data["sections"]:
         if section["id"] == section_id:
             original_length = len(section["links"])
@@ -119,9 +119,9 @@ async def delete_link(
             if len(section["links"]) < original_length:
                 save_links(data)
                 return {"success": True}
-            raise HTTPException(status_code=404, detail="링크를 찾을 수 없습니다")
+            raise HTTPException(status_code=404, detail="Link not found")
     
-    raise HTTPException(status_code=404, detail="섹션을 찾을 수 없습니다")
+    raise HTTPException(status_code=404, detail="Section not found")
 
 
 @app.post("/api/sections")
@@ -129,16 +129,16 @@ async def add_section(
     request: Request,
     x_password: Optional[str] = Header(None)
 ):
-    """새 섹션 추가 (비밀번호 필요)"""
+    """Add new section (password required)"""
     if not verify_password(x_password):
-        raise HTTPException(status_code=401, detail="비밀번호가 올바르지 않습니다")
+        raise HTTPException(status_code=401, detail="Invalid password")
     
     body = await request.json()
     title = body.get("title", "")
     color = body.get("color", "blue")
     
     if not title:
-        raise HTTPException(status_code=400, detail="섹션 제목이 필요합니다")
+        raise HTTPException(status_code=400, detail="Section title is required")
     
     data = load_links()
     new_section = {
@@ -155,9 +155,9 @@ async def add_section(
 
 @app.delete("/api/sections/{section_id}")
 async def delete_section(section_id: str, x_password: Optional[str] = Header(None)):
-    """섹션 삭제 (비밀번호 필요)"""
+    """Delete section (password required)"""
     if not verify_password(x_password):
-        raise HTTPException(status_code=401, detail="비밀번호가 올바르지 않습니다")
+        raise HTTPException(status_code=401, detail="Invalid password")
     
     data = load_links()
     original_length = len(data["sections"])
@@ -167,4 +167,4 @@ async def delete_section(section_id: str, x_password: Optional[str] = Header(Non
         save_links(data)
         return {"success": True}
     
-    raise HTTPException(status_code=404, detail="섹션을 찾을 수 없습니다")
+    raise HTTPException(status_code=404, detail="Section not found")
