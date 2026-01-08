@@ -168,3 +168,42 @@ async def delete_section(section_id: str, x_password: Optional[str] = Header(Non
         return {"success": True}
     
     raise HTTPException(status_code=404, detail="Section not found")
+
+
+@app.post("/api/links/{section_id}/{link_id}/move")
+async def move_link(
+    section_id: str,
+    link_id: str,
+    request: Request,
+    x_password: Optional[str] = Header(None)
+):
+    """Move link up or down (password required)"""
+    if not verify_password(x_password):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    body = await request.json()
+    direction = body.get("direction", "")  # "up" or "down"
+    
+    if direction not in ["up", "down"]:
+        raise HTTPException(status_code=400, detail="Invalid direction")
+    
+    data = load_links()
+    
+    for section in data["sections"]:
+        if section["id"] == section_id:
+            links = section["links"]
+            # Find link index
+            idx = next((i for i, l in enumerate(links) if l["id"] == link_id), None)
+            if idx is None:
+                raise HTTPException(status_code=404, detail="Link not found")
+            
+            # Move link
+            if direction == "up" and idx > 0:
+                links[idx], links[idx - 1] = links[idx - 1], links[idx]
+            elif direction == "down" and idx < len(links) - 1:
+                links[idx], links[idx + 1] = links[idx + 1], links[idx]
+            
+            save_links(data)
+            return {"success": True}
+    
+    raise HTTPException(status_code=404, detail="Section not found")

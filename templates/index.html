@@ -83,13 +83,22 @@
             text-shadow: 0 0 10px var(--theme-color);
         }
         
-        /* Delete button */
-        .delete-btn {
+        /* Delete & move buttons */
+        .action-btn {
             opacity: 0;
             transition: opacity 0.2s;
         }
-        .link-item:hover .delete-btn {
+        .link-item:hover .action-btn {
             opacity: 1;
+        }
+        .move-btn {
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+        .move-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         
         /* Modal */
@@ -179,8 +188,14 @@
                     {% for link in section.links %}
                     <li class="link-item flex items-center justify-between group" data-link-id="{{ link.id }}">
                         <a href="{{ link.url }}" class="section-link hover:underline flex-1">{{ link.name }}</a>
-                        <button onclick="deleteLink('{{ section.id }}', '{{ link.id }}')" 
-                            class="delete-btn text-red-400 hover:text-red-300 ml-2 text-sm">✕</button>
+                        <div class="flex items-center gap-1 ml-2">
+                            <button onclick="moveLink('{{ section.id }}', '{{ link.id }}', 'up')" 
+                                class="action-btn move-btn text-gray-400 hover:text-white">↑</button>
+                            <button onclick="moveLink('{{ section.id }}', '{{ link.id }}', 'down')" 
+                                class="action-btn move-btn text-gray-400 hover:text-white">↓</button>
+                            <button onclick="deleteLink('{{ section.id }}', '{{ link.id }}')" 
+                                class="action-btn text-red-400 hover:text-red-300 text-sm">✕</button>
+                        </div>
                     </li>
                     {% endfor %}
                 </ul>
@@ -498,6 +513,32 @@
                 }
             });
         });
+
+        // Move link
+        async function moveLink(sectionId, linkId, direction) {
+            const password = prompt("Enter admin password:");
+            if (!password) return;
+
+            try {
+                const response = await fetch(`/api/links/${sectionId}/${linkId}/move`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-Password": password
+                    },
+                    body: JSON.stringify({ direction })
+                });
+
+                if (response.ok) {
+                    window.location.reload();
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || "Failed to move", true);
+                }
+            } catch (e) {
+                showToast("An error occurred", true);
+            }
+        }
     </script>
 </body>
 </html>
