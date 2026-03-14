@@ -54,7 +54,7 @@ docker run -d -p 8000:8000 -e ADMIN_PASSWORD=yourpassword my-start-page
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ADMIN_PASSWORD` | Admin password | `1234` |
+| `ADMIN_PASSWORD` | Admin password | `****` |
 | `LINKS_FILE` | Links data file path | `links.json` |
 
 ---
