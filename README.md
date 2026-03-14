@@ -9,7 +9,7 @@
 
 **A personal browser start page with glassmorphism UI** 🚀
 
-🔗 **Live Demo:** [startpage.bit-habit.com](https://startpage.bit-habit.com)
+🔗 **Live Demo:** <a href="https://startpage.bit-habit.com" target="_blank">startpage.bit-habit.com</a>
 
 </div>
 
@@ -69,6 +69,6 @@ docker run -d -p 8000:8000 -e ADMIN_PASSWORD=yourpassword my-start-page
 
 <div align="center">
 
-Made with 💜 by [bit-habit.com](https://bit-habit.com)
+Made with 💜 by <a href="https://bit-habit.com" target="_blank">bit-habit.com</a>
 
 </div>
